@@ -28,18 +28,15 @@ if first_names and last_names:
             # Print athlete name
             print(f"Athlete: {first_name} {last_name}")
             # Print matches in groups of 7
-            offset = 0
             for i in range(0, len(matches), 7):
                 if i + 6 < len(matches):
-                    # For the first match, use i; for subsequent, use i+offset
-                    idx = i + offset
-                    opponent = matches[idx+1].get_text(strip=True)
-                    result = matches[idx+2].get_text(strip=True)
-                    method = matches[idx+3].get_text(strip=True)
-                    competition = matches[idx+4].get_text(strip=True)
-                    weight = matches[idx+5].get_text(strip=True)
-                    stage = matches[idx+5].get_text(strip=True)
-                    year = matches[idx+6].get_text(strip=True)
+                    opponent = matches[i+1].get_text(strip=True)
+                    result = matches[i+2].get_text(strip=True)
+                    method = matches[i+3].get_text(strip=True)
+                    competition = matches[i+4].get_text(strip=True)
+                    weight = matches[i+5].get_text(strip=True)
+                    stage = matches[i+6].get_text(strip=True)
+                    year = matches[i+7].get_text(strip=True)
                     print(f"  Opponent: {opponent}")
                     print(f"  Result: {result}")
                     print(f"  Method: {method}")
@@ -48,6 +45,4 @@ if first_names and last_names:
                     print(f"  Stage: {stage}")
                     print(f"  Year: {year}")
                     print("  ---")
-                    if i == 0:
-                        offset += 1  # After the first match, add 1 to the offset
             print('=' * 80)
