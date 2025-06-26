@@ -14,11 +14,40 @@ soup = BeautifulSoup(response.text, 'html.parser')
 first_names = soup.find_all('td', class_='column-1')
 last_names = soup.find_all('td', class_='column-2')
 
-# Iterate over the names and print them
+# Iterate over the names and print only those with matches
 if first_names and last_names:
     for first, last in zip(first_names, last_names):
-        print(first.get_text(strip=True))
-        print(last.get_text(strip=True))
-
-        url_name = url_fighters + first.get_text(strip=True) +'-' + last.get_text(strip=True)
-        print(url_name)
+        first_name = first.get_text(strip=True)
+        last_name = last.get_text(strip=True)
+        url_name = url_fighters + first_name + '-' + last_name
+        response_name = requests.get(url_name)
+        soup = BeautifulSoup(response_name.text, 'html.parser')
+        matches = soup.find_all('td')
+        
+        if matches:
+            # Print athlete name
+            print(f"Athlete: {first_name} {last_name}")
+            # Print matches in groups of 7
+            offset = 0
+            for i in range(0, len(matches), 7):
+                if i + 6 < len(matches):
+                    # For the first match, use i; for subsequent, use i+offset
+                    idx = i + offset
+                    opponent = matches[idx+1].get_text(strip=True)
+                    result = matches[idx+2].get_text(strip=True)
+                    method = matches[idx+3].get_text(strip=True)
+                    competition = matches[idx+4].get_text(strip=True)
+                    weight = matches[idx+5].get_text(strip=True)
+                    stage = matches[idx+5].get_text(strip=True)
+                    year = matches[idx+6].get_text(strip=True)
+                    print(f"  Opponent: {opponent}")
+                    print(f"  Result: {result}")
+                    print(f"  Method: {method}")
+                    print(f"  Competition: {competition}")
+                    print(f"  Weight: {weight}")
+                    print(f"  Stage: {stage}")
+                    print(f"  Year: {year}")
+                    print("  ---")
+                    if i == 0:
+                        offset += 1  # After the first match, add 1 to the offset
+            print('=' * 80)
