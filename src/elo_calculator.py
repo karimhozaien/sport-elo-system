@@ -19,6 +19,40 @@ def clean_name(name):
             name = name[:half]
     return name
 
+def get_competition_multiplier(competition, result, event_multipliers=None):
+    """
+    Returns the competition multiplier for a given competition and result.
+    event_multipliers: dict mapping event keyword (lowercase) to multiplier (applied only if result == 'W')
+    """
+    if event_multipliers is None:
+        event_multipliers = {'adcc': 2.0}  # Default: ADCC 2x
+    competition = competition.lower()
+    if result == 'W':
+        for event, multiplier in event_multipliers.items():
+            if event in competition:
+                return multiplier
+    return 1.0
+
+def get_stage_multiplier(competition, stage):
+    competition = competition.lower()
+    stage = stage.strip().upper()
+    if 'adcc' or 'cji' or 'one fc' or 'ufc' in competition:
+        if stage == 'F':
+            return 2.5
+        elif stage == 'SF':
+            return 2.0
+        elif stage == 'QF':
+            return 1.25
+        else:
+            return 1.0
+    else:
+        if stage == 'SF':
+            return 1.1
+        elif stage == 'F':
+            return 1.2
+        else:
+            return 1.0
+
 # Read match data
 matches = []
 with open('fighter_matches.csv', newline='', encoding='utf-8') as csvfile:
@@ -49,6 +83,8 @@ for match in matches:
     match_id = match['ID']
     result = match.get('W/L', '').strip().upper()  # 'W', 'L', or 'D'
     method = match.get('Method', '').strip().lower()
+    competition = match.get('Competition', '').strip().lower()
+    stage = match.get('Stage', '').strip().upper()
 
     # Get ratings
     rating_f = ratings[fighter]
@@ -87,9 +123,26 @@ for match in matches:
     else:
         multiplier = 1.0  # default for loss/draw
 
-    # Update ratings (apply multiplier only to winner's Elo change)
-    ratings[fighter] = rating_f + k_f * (actual_f - expected_f) * multiplier
-    ratings[opponent] = rating_o + k_o * (actual_o - expected_o) * (1.0 if result == 'W' else multiplier)
+    # Competition multiplier (only for winner)
+    comp_multiplier_f = get_competition_multiplier(
+        competition,
+        result,
+        event_multipliers={
+            'adcc': 2.5,
+            'world champ': 1.2,
+            'one fc': 2.0,
+            'ufc': 2.0,
+            'cji': 2.5,
+        }
+    )
+    comp_multiplier_o = 1.0  # Loser/opponent never gets the event multiplier
+
+    # Stage multiplier
+    stage_multiplier = get_stage_multiplier(competition, stage)
+
+    # Update ratings (apply all multipliers)
+    ratings[fighter] = rating_f + k_f * (actual_f - expected_f) * multiplier * comp_multiplier_f * stage_multiplier
+    ratings[opponent] = rating_o + k_o * (actual_o - expected_o) * (1.0 if result == 'W' else multiplier) * comp_multiplier_o * stage_multiplier
 
     # Update match counts
     match_counts[fighter] += 1
@@ -107,17 +160,28 @@ for match in matches:
         peak_elo[opponent]['Rating'] = ratings[opponent]
         peak_elo[opponent]['Year'] = year
 
-# Export final ratings
+# Export combined Elo ratings: name, peak elo, peak elo year, current elo, number of matches
+combined = {}
+for fighter, rating in ratings.items():
+    name_key = clean_name(fighter).lower()
+    peak = peak_elo.get(fighter, {'Rating': rating, 'Year': None, 'Fighter': clean_name(fighter)})
+    entry = {
+        'Fighter': clean_name(fighter),
+        'Peak_Elo': round(peak['Rating'], 2),
+        'Peak_Elo_Year': peak['Year'],
+        'Current_Elo': round(rating, 2),
+        'Matches': match_counts[fighter]
+    }
+    # Only keep the record with the highest peak elo for each unique name
+    if name_key not in combined or entry['Peak_Elo'] > combined[name_key]['Peak_Elo']:
+        combined[name_key] = entry
+
 with open('elo_ratings.csv', 'w', newline='', encoding='utf-8') as csvfile:
-    fieldnames = ['Fighter', 'Final_Rating', 'Matches']
+    fieldnames = ['Fighter', 'Peak_Elo', 'Peak_Elo_Year', 'Current_Elo', 'Matches']
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     writer.writeheader()
-    for fighter, rating in sorted(ratings.items(), key=lambda x: -x[1]):
-        writer.writerow({
-            'Fighter': fighter,
-            'Final_Rating': round(rating, 2),
-            'Matches': match_counts[fighter]
-        })
+    for row in sorted(combined.values(), key=lambda x: -x['Current_Elo']):
+        writer.writerow(row)
 
 # Export rating history (optional)
 with open('rating_history.csv', 'w', newline='', encoding='utf-8') as csvfile:
@@ -133,16 +197,4 @@ with open('rating_history.csv', 'w', newline='', encoding='utf-8') as csvfile:
                 'Rating': round(entry['Rating'], 2)
             })
 
-# Export peak Elo and year
-with open('peak_elo.csv', 'w', newline='', encoding='utf-8') as csvfile:
-    fieldnames = ['Fighter', 'Peak_Elo', 'Year']
-    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-    writer.writeheader()
-    for fighter, peak in sorted(peak_elo.items(), key=lambda x: -x[1]['Rating']):
-        writer.writerow({
-            'Fighter': fighter,
-            'Peak_Elo': round(peak['Rating'], 2),
-            'Year': peak['Year']
-        })
-
-print('Elo calculation complete. Results saved to elo_ratings.csv, rating_history.csv, and peak_elo.csv.') 
+print('Elo calculation complete. Results saved to elo_ratings.csv and rating_history.csv.') 
