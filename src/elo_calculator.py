@@ -119,7 +119,7 @@ for match in matches:
         elif 'pts' in method:
             multiplier = 1.0
         else:
-            multiplier = 1.2  # treat as submission
+            multiplier = 1.5  # treat as submission
     else:
         multiplier = 1.0  # default for loss/draw
 
