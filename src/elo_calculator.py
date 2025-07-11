@@ -17,7 +17,7 @@ def clean_name(name):
     # Remove leading/trailing spaces, collapse multiple spaces, and fix repeated names
     name = name.strip()
     name = re.sub(r'\s+', ' ', name)  # Collapse multiple spaces
-    # Remove repeated names (e.g., 'Mica GalvaoMica Galvao' -> 'Mica Galvao')
+    # Remove repeated names
     if len(name) % 2 == 0:
         half = len(name) // 2
         if name[:half] == name[half:]:
@@ -75,7 +75,7 @@ matches.sort(key=lambda x: (x['Year'], x['ID']))
 ratings = defaultdict(lambda: INITIAL_RATING)
 match_counts = defaultdict(int)
 
-# Optionally, track rating history
+# track rating history
 rating_history = defaultdict(list)
 # Track peak Elo and year
 peak_elo = defaultdict(lambda: {'Rating': INITIAL_RATING, 'Year': None})
@@ -190,7 +190,7 @@ with open('elo_ratings.csv', 'w', newline='', encoding='utf-8') as csvfile:
     for row in sorted(combined.values(), key=lambda x: -x['Current_Elo']):
         writer.writerow(row)
 
-# Export rating history (optional)
+# Export rating history
 with open('rating_history.csv', 'w', newline='', encoding='utf-8') as csvfile:
     fieldnames = ['Fighter', 'Year', 'ID', 'Rating']
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
