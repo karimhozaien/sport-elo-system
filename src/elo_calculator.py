@@ -238,4 +238,4 @@ with open('top3_by_year.csv', 'w', newline='', encoding='utf-8') as csvfile:
         for rank, (fighter, elo) in enumerate(fighter_elos[:3], 1):
             writer.writerow({'Year': int(year), 'Rank': int(rank), 'Fighter': fighter, 'Elo': round(elo, 2)})
 
-print('Elo calculation complete. Results saved to elo_ratings.csv and rating_history.csv.') 
+print('Elo calculation complete. Results saved to elo_ratings.csv, rating_history.csv, and top3_by_year.csv.') 
