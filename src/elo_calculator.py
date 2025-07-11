@@ -1,6 +1,11 @@
 import csv
 from collections import defaultdict
 import re
+from typing import Dict, Tuple
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'searching_a_z')))
+from name_normalizer import normalize_fighter_name
 
 # Elo parameters
 INITIAL_RATING = 1500
@@ -163,18 +168,20 @@ for match in matches:
 # Export combined Elo ratings: name, peak elo, peak elo year, current elo, number of matches
 combined = {}
 for fighter, rating in ratings.items():
-    name_key = clean_name(fighter).lower()
-    peak = peak_elo.get(fighter, {'Rating': rating, 'Year': None, 'Fighter': clean_name(fighter)})
+    normalized_name = normalize_fighter_name(clean_name(fighter))
+    # For display, use a cleaned, title-cased version of the normalized name
+    display_name = normalize_fighter_name(clean_name(fighter)).title()
+    peak = peak_elo.get(fighter, {'Rating': rating, 'Year': None, 'Fighter': display_name})
     entry = {
-        'Fighter': clean_name(fighter),
-        'Peak_Elo': round(peak['Rating'], 2),
+        'Fighter': display_name,
+        'Peak_Elo': round(peak['Rating'] if peak['Rating'] is not None else INITIAL_RATING, 2),
         'Peak_Elo_Year': peak['Year'],
-        'Current_Elo': round(rating, 2),
+        'Current_Elo': round(rating if rating is not None else INITIAL_RATING, 2),
         'Matches': match_counts[fighter]
     }
-    # Only keep the record with the highest peak elo for each unique name
-    if name_key not in combined or entry['Peak_Elo'] > combined[name_key]['Peak_Elo']:
-        combined[name_key] = entry
+    # Only keep the record with the highest peak elo for each unique normalized name
+    if normalized_name not in combined or entry['Peak_Elo'] > combined[normalized_name]['Peak_Elo']:
+        combined[normalized_name] = entry
 
 with open('elo_ratings.csv', 'w', newline='', encoding='utf-8') as csvfile:
     fieldnames = ['Fighter', 'Peak_Elo', 'Peak_Elo_Year', 'Current_Elo', 'Matches']
@@ -196,5 +203,39 @@ with open('rating_history.csv', 'w', newline='', encoding='utf-8') as csvfile:
                 'ID': entry['ID'],
                 'Rating': round(entry['Rating'], 2)
             })
+
+# After rating_history is built and before the final print
+# Write out the top 3 Elo ratings at the end of each year to a CSV
+year_end_elos: Dict[int, Dict[str, Tuple[int, float]]] = {}
+for fighter, history in rating_history.items():
+    for entry in history:
+        try:
+            year = int(entry['Year'])
+            match_id = int(entry['ID'])
+            elo = float(entry['Rating'])
+        except (ValueError, TypeError):
+            continue
+        if year not in year_end_elos:
+            year_end_elos[year] = {}
+        prev = year_end_elos[year].get(fighter)
+        # Only keep the last Elo for each fighter in each year
+        if prev is None or (isinstance(prev, tuple) and len(prev) == 2 and isinstance(prev[0], int) and match_id > prev[0]):
+            year_end_elos[year][fighter] = (match_id, elo)
+
+with open('top3_by_year.csv', 'w', newline='', encoding='utf-8') as csvfile:
+    fieldnames = ['Year', 'Rank', 'Fighter', 'Elo']
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    writer.writeheader()
+    for year in sorted(year_end_elos.keys()):
+        # Grab all the (fighter, elo) pairs for this year
+        fighter_elos = []
+        for fighter, data in year_end_elos[year].items():
+            if isinstance(data, tuple) and len(data) == 2 and isinstance(data[1], float):
+                fighter_elos.append((fighter, data[1]))
+        # Sort by Elo, highest first
+        fighter_elos.sort(key=lambda x: -x[1])
+        # Write out the top 3 for this year
+        for rank, (fighter, elo) in enumerate(fighter_elos[:3], 1):
+            writer.writerow({'Year': int(year), 'Rank': int(rank), 'Fighter': fighter, 'Elo': round(elo, 2)})
 
 print('Elo calculation complete. Results saved to elo_ratings.csv and rating_history.csv.') 
