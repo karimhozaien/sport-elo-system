@@ -4,7 +4,7 @@ import re
 from typing import Dict, Tuple
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'searching_a_z')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'old_scraper')))
 from name_normalizer import normalize_fighter_name
 
 # Elo parameters
@@ -183,11 +183,24 @@ for fighter, rating in ratings.items():
     if normalized_name not in combined or entry['Peak_Elo'] > combined[normalized_name]['Peak_Elo']:
         combined[normalized_name] = entry
 
+# Filter out fighters with less than 10 matches
+MIN_MATCHES = 10
+filtered_combined = {k: v for k, v in combined.items() if v['Matches'] >= MIN_MATCHES}
+
+# Print filtering statistics
+total_fighters = len(combined)
+filtered_fighters = len(filtered_combined)
+removed_fighters = total_fighters - filtered_fighters
+print(f"Filtering fighters with less than {MIN_MATCHES} matches:")
+print(f"Total fighters: {total_fighters}")
+print(f"Fighters with {MIN_MATCHES}+ matches: {filtered_fighters}")
+print(f"Fighters removed: {removed_fighters}")
+
 with open('elo_ratings.csv', 'w', newline='', encoding='utf-8') as csvfile:
     fieldnames = ['Fighter', 'Peak_Elo', 'Peak_Elo_Year', 'Current_Elo', 'Matches']
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     writer.writeheader()
-    for row in sorted(combined.values(), key=lambda x: -x['Current_Elo']):
+    for row in sorted(filtered_combined.values(), key=lambda x: -x['Current_Elo']):
         writer.writerow(row)
 
 # Export rating history
@@ -238,4 +251,5 @@ with open('top3_by_year.csv', 'w', newline='', encoding='utf-8') as csvfile:
         for rank, (fighter, elo) in enumerate(fighter_elos[:3], 1):
             writer.writerow({'Year': int(year), 'Rank': int(rank), 'Fighter': fighter, 'Elo': round(elo, 2)})
 
-print('Elo calculation complete. Results saved to elo_ratings.csv, rating_history.csv, and top3_by_year.csv.') 
+print('Elo calculation complete. Results saved to elo_ratings.csv, rating_history.csv, and top3_by_year.csv.')
+print(f'Note: Only fighters with {MIN_MATCHES}+ matches are included in elo_ratings.csv.') 
