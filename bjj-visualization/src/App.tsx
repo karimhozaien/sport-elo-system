@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -357,22 +357,7 @@ function App() {
     }
   };
 
-  const getFighterImage = (fighterName: string) => {
-    // Create multiple variations of the name to try different filename patterns
-    const variations = [
-      // Original name with hyphens
-      fighterName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, ''),
-      // Name with accented characters preserved
-      fighterName.toLowerCase().replace(/\s+/g, '-'),
-      // Name with diacritics removed
-      fighterName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '-'),
-      // Simple lowercase with hyphens
-      fighterName.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-')
-    ];
-    
-    // Return the first variation (most common pattern)
-    return `/images/${variations[0]}.png`;
-  };
+
 
   const FighterImage = ({ fighterName }: { fighterName: string }) => {
     const [imageLoaded, setImageLoaded] = useState(false);
